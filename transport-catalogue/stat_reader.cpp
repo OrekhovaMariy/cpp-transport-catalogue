@@ -1,6 +1,7 @@
 #include "stat_reader.h"
 
 namespace transport_catalogue::stat_reader
+
 {
     std::ostream& operator<<(std::ostream& os, const Stop* stop)
     {
@@ -11,6 +12,7 @@ namespace transport_catalogue::stat_reader
         os << stop->coords.lng;
         return os;
     }
+
     std::ostream& operator<<(std::ostream& os, const Bus* route)
     {
         using namespace std::string_literals;      
