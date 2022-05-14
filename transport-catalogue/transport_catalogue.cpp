@@ -8,6 +8,7 @@ namespace transport_catalogue
 
     TransportCatalogue::~TransportCatalogue()
     {}
+
     void TransportCatalogue::AddStop(Stop&& stop)
     {
         if (all_stops_map_.count(GetStopName(&stop)) == 0)
@@ -48,18 +49,20 @@ namespace transport_catalogue
         }
     }
 
-    void TransportCatalogue::AddDistance(const Stop* stop_from, const Stop* stop_to, size_t dist)
+    void TransportCatalogue::SetDistance(const Stop* stop_from, const Stop* stop_to, size_t dist)
     {
         if (stop_from != nullptr && stop_to != nullptr)
         {  
             distances_.insert({ { stop_from, stop_to }, dist });
         }
     }
+
     size_t TransportCatalogue::GetDistance(const Stop* stop_from, const Stop* stop_to)
     {
         size_t result = GetDistanceDirectly(stop_from, stop_to);
         return (result > 0 ? result : GetDistanceDirectly(stop_to, stop_from));
     }
+
     size_t TransportCatalogue::GetDistanceDirectly(const Stop* stop_from, const Stop* stop_to)
     {
         if (distances_.count({ stop_from, stop_to }) > 0)
@@ -76,18 +79,22 @@ namespace transport_catalogue
     {
         return std::string_view(stop_ptr->name);
     }
+
     std::string_view TransportCatalogue::GetStopName(const Stop stop)
     {
         return std::string_view(stop.name);
     }
+
     std::string_view TransportCatalogue::GetBusName(const Bus* route_ptr)
     {
         return std::string_view(route_ptr->bus_number);
     }
+
     std::string_view TransportCatalogue::GetBusName(const Bus route)
     {
         return std::string_view(route.bus_number);
     }
+
     const Stop* TransportCatalogue::GetStopByName(std::string_view stop_name)
     {
         if (all_stops_map_.count(stop_name) == 0)
@@ -99,6 +106,7 @@ namespace transport_catalogue
             return all_stops_map_.at(stop_name);
         }
     }
+
     Bus* TransportCatalogue::GetRouteByName(std::string_view bus_name)
     {
         if (all_buses_map_.count(bus_name) == 0)
