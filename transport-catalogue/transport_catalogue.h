@@ -14,6 +14,7 @@
 #include <functional>      
 
 namespace transport_catalogue
+
 {
     enum class InputQueryType
     {
@@ -95,7 +96,7 @@ namespace transport_catalogue
         ~TransportCatalogue();
         void AddStop(Stop&&);              
         void AddRoute(Bus&&);            
-        void AddDistance(const Stop*, const Stop*, size_t);    
+        void SetDistance(const Stop*, const Stop*, size_t);    
         size_t GetDistance(const Stop*, const Stop*);          
         size_t GetDistanceDirectly(const Stop*, const Stop*);  
         const Stop* GetStopByName(std::string_view);    
