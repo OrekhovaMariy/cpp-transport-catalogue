@@ -19,33 +19,39 @@ namespace transport_catalogue
     }
 
     void TransportCatalogue::AddRoute(Bus&& route)
-    { 
+    {
         if (all_buses_map_.count(route.bus_number) == 0)
-        {  
-            auto& ref = all_buses_.emplace_back(std::move(route));    
-            all_buses_map_.insert({ std::string_view(ref.bus_number), &ref });   
-            std::vector<const Stop*> tmp = ref.stops;
+        {
+            auto& ref = all_buses_.emplace_back(std::move(route));
+            all_buses_map_.insert({ std::string_view(ref.bus_number), &ref });
+
+        }
+    }
+
+    BusInfo TransportCatalogue::GetBusInfo(const std::string_view route)
+    {
+        if (all_buses_map_.count(route))
+        {
+            auto& Bus = all_buses_map_[route];
+            std::vector<const Stop*> tmp = Bus->stops;
+            size_t stops_num = static_cast<int>(Bus->stops.size());
+            size_t uniq = 0U;
             std::sort(tmp.begin(), tmp.end());
             auto last = std::unique(tmp.begin(), tmp.end());  
-            ref.unique_stops_qty = (last != tmp.end() ? std::distance(tmp.begin(), last) : tmp.size());           
-            int stops_num = static_cast<int>(ref.stops.size());
+            uniq = (last != tmp.end() ? std::distance(tmp.begin(), last) : tmp.size());           
+            double geo_length = 0L;
+            size_t meters_length = 0U;
+            double curv = 0L;
             if (stops_num > 1)
             {
-                ref.geo_route_length = 0L;
-                ref.meters_route_length = 0U;
                 for (int i = 0; i < stops_num - 1; ++i)
                 {
-                    ref.geo_route_length += ComputeDistance(ref.stops[i]->coords, ref.stops[i + 1]->coords);
-                    ref.meters_route_length += GetDistance(ref.stops[i], ref.stops[i + 1]);
+                    geo_length += ComputeDistance(Bus->stops[i]->coords, Bus->stops[i+1]->coords);
+                    meters_length += GetDistance(Bus->stops[i], Bus->stops[i+1]);
                 }  
-                ref.curvature = ref.meters_route_length / ref.geo_route_length;
+                  curv = meters_length / geo_length;
             }
-            else
-            {
-                ref.geo_route_length = 0L;
-                ref.meters_route_length = 0U;
-                ref.curvature = 1L;
-            } 
+            return { std::string_view(route), stops_num, uniq, geo_length, meters_length, curv };
         }
     }
 
