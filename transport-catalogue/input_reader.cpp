@@ -1,6 +1,7 @@
 #include "input_reader.h"
 
 namespace detail
+
 {
     std::pair<std::string_view, std::string_view> Split(std::string_view line, char by, int count)
     {
@@ -48,8 +49,8 @@ namespace detail
     }
 }
 
-
 namespace transport_catalogue::input_reader
+
 {
     void ProcessInput(TransportCatalogue& tc, std::istream& is)
     { 
@@ -187,10 +188,9 @@ namespace transport_catalogue::input_reader
             {          
                 return;
             }         
-            tc.AddDistance(stop_from, stop_to, dist);
+            tc.SetDistance(stop_from, stop_to, dist);
         }
     }
-
 
     Bus ProcessQueryAddRoute(TransportCatalogue& tc, std::string& query)
     {
