@@ -62,6 +62,12 @@ namespace transport_catalogue
     {
         std::string bus_number;
         std::vector<const Stop*> stops;
+    };
+
+    struct BusInfo
+    {
+        std::string_view bus_number;
+        size_t stops_count_ = 0U;
         size_t unique_stops_qty = 0U;
         double geo_route_length = 0L;
         size_t meters_route_length = 0U;
@@ -95,7 +101,8 @@ namespace transport_catalogue
         TransportCatalogue();
         ~TransportCatalogue();
         void AddStop(Stop&&);              
-        void AddRoute(Bus&&);            
+        void AddRoute(Bus&&);
+        BusInfo GetBusInfo(const std::string_view route);
         void SetDistance(const Stop*, const Stop*, size_t);    
         size_t GetDistance(const Stop*, const Stop*);          
         size_t GetDistanceDirectly(const Stop*, const Stop*);  
