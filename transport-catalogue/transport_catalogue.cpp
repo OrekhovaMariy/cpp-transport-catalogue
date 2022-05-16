@@ -9,7 +9,7 @@ namespace transport_catalogue
     TransportCatalogue::~TransportCatalogue()
     {}
 
-    void TransportCatalogue::AddStop(Stop&& stop)
+    void TransportCatalogue::AddStop(const Stop& stop)
     {
         if (all_stops_map_.count(GetStopName(&stop)) == 0)
         {
@@ -18,7 +18,7 @@ namespace transport_catalogue
         }
     }
 
-    void TransportCatalogue::AddRoute(Bus&& route)
+    void TransportCatalogue::AddRoute(const Bus& route)
     {
         if (all_buses_map_.count(route.bus_number) == 0)
         {
