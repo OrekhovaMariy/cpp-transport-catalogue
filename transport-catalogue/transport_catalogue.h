@@ -28,18 +28,6 @@ namespace transport_catalogue
         std::string query_ {};
     };
 
-    enum class RequestQueryType
-    {
-        GetRouteByName,
-        GetBusesForStop,
-    };
-
-    struct RequestQuery
-    {
-        RequestQueryType outputtype_{};
-        std::string requery_ {}; 
-    };
-
     struct Stop
     {
     public:
@@ -77,6 +65,7 @@ namespace transport_catalogue
         {
             return hasher_(static_cast<const void*>(pair_of_pointers.first)) * 41 + hasher_(static_cast<const void*>(pair_of_pointers.second));
         }
+
         std::size_t operator()(const Stop* stop) const noexcept
         {
             return hasher_(static_cast<const void*>(stop)) * 41;
@@ -90,16 +79,19 @@ namespace transport_catalogue
     public:
         TransportCatalogue();
         ~TransportCatalogue();
-        void AddStop(Stop&&);
-        void AddRoute(Bus&&);
-        BusInfo GetBusInfo(const std::string_view);
-        StopInfo GetStopInfo(std::string_view);
-        void SetDistance(const Stop*, const Stop*, size_t);
-        size_t GetDistance(const Stop*, const Stop*);
-        size_t GetDistanceDirectly(const Stop*, const Stop*);
-        const Stop* GetStopByName(std::string_view);
-        Bus* GetRouteByName(std::string_view);
-        std::deque<RequestQuery> request_data_;
+
+        void AddStop(const Stop& stop);
+        void AddRoute(const Bus& route);
+
+        BusInfo GetBusInfo(const std::string_view route);
+        StopInfo GetStopInfo(std::string_view stop_name);
+
+        void SetDistance(const Stop* stop_from, const Stop* stop_to, size_t dist);
+        size_t GetDistance(const Stop* stop_from, const Stop* stop_to);
+        size_t GetDistanceDirectly(const Stop* stop_from, const Stop* stop_to);
+
+        const Stop* GetStopByName(std::string_view stop_name);
+        Bus* GetRouteByName(std::string_view bus_name);
         
     private:
         std::deque<Stop> all_stops_;
@@ -111,8 +103,8 @@ namespace transport_catalogue
 
         std::string_view GetStopName(const Stop* stop_ptr);
         std::string_view GetStopName(const Stop stop);
+
         std::string_view GetBusName(const Bus* route_ptr);
         std::string_view GetBusName(const Bus route);
     };
 }
-
