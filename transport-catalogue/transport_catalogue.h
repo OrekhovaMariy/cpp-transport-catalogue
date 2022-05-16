@@ -14,11 +14,9 @@
 #include <functional>      
 
 namespace transport_catalogue
-
 {
     enum class InputQueryType
     {
-        NoOp,
         AddStop,
         AddRoute,
         AddStopsDistance,
@@ -26,36 +24,34 @@ namespace transport_catalogue
 
     struct InputQuery
     {
-        InputQueryType type = InputQueryType::NoOp;
-        std::string query;
+        InputQueryType inputtype_{};
+        std::string query_ {};
     };
 
     enum class RequestQueryType
     {
-        NoOp,
         GetRouteByName,
         GetBusesForStop,
     };
 
     struct RequestQuery
     {
-        RequestQueryType type{ RequestQueryType::NoOp };
-        std::string_view params;
-    };
-
-    enum class RequestResultType
-    {
-        Ok,
-        NoBuses,
-        StopNotExists,
-        RouteNotExists,
+        RequestQueryType outputtype_{};
+        std::string requery_ {}; 
     };
 
     struct Stop
     {
     public:
         std::string name;
-        Coordinates coords{ 0L,0L };
+        Coordinates coords{ 0.0, 0.0 };
+    };
+
+    struct StopInfo
+    {
+        std::string_view name_{};
+        std::vector<std::string> bus_number_{};
+        bool absent_ = false;
     };
 
     struct Bus
@@ -66,32 +62,26 @@ namespace transport_catalogue
 
     struct BusInfo
     {
-        std::string_view bus_number;
-        size_t stops_count_ = 0U;
-        size_t unique_stops_qty = 0U;
-        double geo_route_length = 0L;
-        size_t meters_route_length = 0U;
-        double curvature = 0L;
+        std::string_view bus_number_;
+        size_t stops_count_ = 0;
+        size_t unique_stops_ = 0;
+        double geo_route_length_ = 0.0;
+        size_t meters_route_length_ = 0;
+        double curvature_ = 0.0;
     };
 
-    struct RequestResult
-    {
-        RequestResultType code = RequestResultType::Ok;   
-        std::vector<std::string> vector_str;              
-        const Stop* s_ptr = nullptr;               
-        const Bus* r_ptr = nullptr;              
-    };
-
-    class PairPointersHasher
+    class PointersHasher
     {
     public:
         std::size_t operator()(const std::pair<const Stop*, const Stop*> pair_of_pointers) const noexcept
         {
-            auto ptr1 = static_cast<const void*>(pair_of_pointers.first);
-            auto ptr2 = static_cast<const void*>(pair_of_pointers.second);
-            return hasher_(ptr1) * 37 + hasher_(ptr2);   
+            return hasher_(static_cast<const void*>(pair_of_pointers.first)) * 41 + hasher_(static_cast<const void*>(pair_of_pointers.second));
         }
-    private:   
+        std::size_t operator()(const Stop* stop) const noexcept
+        {
+            return hasher_(static_cast<const void*>(stop)) * 41;
+        }
+    private:
         std::hash<const void*> hasher_;
     };
 
@@ -100,27 +90,29 @@ namespace transport_catalogue
     public:
         TransportCatalogue();
         ~TransportCatalogue();
-        void AddStop(Stop&&);              
+        void AddStop(Stop&&);
         void AddRoute(Bus&&);
-        BusInfo GetBusInfo(const std::string_view route);
-        void SetDistance(const Stop*, const Stop*, size_t);    
-        size_t GetDistance(const Stop*, const Stop*);          
-        size_t GetDistanceDirectly(const Stop*, const Stop*);  
-        const Stop* GetStopByName(std::string_view);    
-        Bus* GetRouteByName(std::string_view);        
-        RequestResult GetRouteInfo(std::string_view);         
-        RequestResult GetBusesForStop(std::string_view);      
-
+        BusInfo GetBusInfo(const std::string_view);
+        StopInfo GetStopInfo(std::string_view);
+        void SetDistance(const Stop*, const Stop*, size_t);
+        size_t GetDistance(const Stop*, const Stop*);
+        size_t GetDistanceDirectly(const Stop*, const Stop*);
+        const Stop* GetStopByName(std::string_view);
+        Bus* GetRouteByName(std::string_view);
+        std::deque<RequestQuery> request_data_;
+        
     private:
-        std::deque<Stop> all_stops_;                                     
-        std::unordered_map<std::string_view, const Stop*> all_stops_map_;     
-        std::deque<Bus> all_buses_;                                    
-        std::unordered_map<std::string_view, Bus*> all_buses_map_;          
-        std::unordered_map<std::pair<const Stop*, const Stop*>, size_t, PairPointersHasher> distances_;    
+        std::deque<Stop> all_stops_;
+        std::unordered_map<std::string_view, const Stop*> all_stops_map_;
+        std::deque<Bus> all_buses_;
+        std::unordered_map<std::string_view, Bus*> all_buses_map_;
+        std::unordered_map<std::pair<const Stop*, const Stop*>, size_t, PointersHasher> distances_;
+        std::unordered_map<const Stop*, std::unordered_set<Bus*>, PointersHasher> stop_to_bus_map_;
 
-        std::string_view GetStopName(const Stop* stop_ptr);  
-        std::string_view GetStopName(const Stop stop);        
-        std::string_view GetBusName(const Bus* route_ptr);        
+        std::string_view GetStopName(const Stop* stop_ptr);
+        std::string_view GetStopName(const Stop stop);
+        std::string_view GetBusName(const Bus* route_ptr);
         std::string_view GetBusName(const Bus route);
     };
 }
+
