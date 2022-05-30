@@ -1,15 +1,11 @@
 #include "transport_catalogue.h"
 
-
-namespace transport_catalogue
+namespace transport_db
 {
     TransportCatalogue::TransportCatalogue()
     {}
 
-    TransportCatalogue::~TransportCatalogue()
-    {}
-
-    void TransportCatalogue::AddStop(const Stop& stop)
+    void TransportCatalogue::AddStop(const domain::Stop& stop)
     {
         if (all_stops_map_.count(GetStopName(&stop)) == 0)
         {
@@ -18,49 +14,53 @@ namespace transport_catalogue
         }
     }
 
-    void TransportCatalogue::AddRoute(const Bus& route)
+    void TransportCatalogue::AddRoute(const domain::Bus& route)
     {
         if (all_buses_map_.count(route.bus_number) == 0)
         {
             auto& ref = all_buses_.emplace_back(std::move(route));
             all_buses_map_.insert({ std::string_view(ref.bus_number), &ref });
-            for (size_t i = 0; i < ref.stops.size(); ++i) {
-                stop_to_bus_map_[ref.stops[i]].insert(&ref);
-            }
+        }
+    }
+
+    void TransportCatalogue::AddStopToBusMap(const std::string_view route) {
+        auto bus = GetRouteByName(route);
+        for (size_t i = 0; i < bus->stops.size(); ++i) {
+            stop_to_bus_map_[bus->stops[i]].insert(bus);
         }
     }
 
     BusInfo TransportCatalogue::GetBusInfo(const std::string_view route)
     {
+        BusInfo bus_info;
         if (all_buses_map_.count(route))
         {
+            bus_info.bus_number_ = route;
             auto& Bus = all_buses_map_[route];
-            std::vector<const Stop*> tmp = Bus->stops;
-            size_t stops_num = static_cast<int>(Bus->stops.size());
-            size_t uniq = 0U;
+            std::vector<const domain::Stop*> tmp = Bus->stops;
+            bus_info.stops_count_ = static_cast<int>(Bus->stops.size());
+            
             std::sort(tmp.begin(), tmp.end());
             auto last = std::unique(tmp.begin(), tmp.end());
-            uniq = (last != tmp.end() ? std::distance(tmp.begin(), last) : tmp.size());
-            double geo_length = 0L;
-            size_t meters_length = 0U;
-            double curv = 0L;
-            if (stops_num > 1)
+            bus_info.unique_stops_ = (last != tmp.end() ? std::distance(tmp.begin(), last) : tmp.size());
+
+            if (bus_info.stops_count_ > 1)
             {
-                for (int i = 0; i < stops_num - 1; ++i)
+                for (int i = 0; i < bus_info.stops_count_ - 1; ++i)
                 {
-                    geo_length += ComputeDistance(Bus->stops[i]->coords, Bus->stops[i + 1]->coords);
-                    meters_length += GetDistance(Bus->stops[i], Bus->stops[i + 1]);
+                    bus_info.geo_route_length_ += ComputeDistance(Bus->stops[i]->coords, Bus->stops[i + 1]->coords);
+                    bus_info.meters_route_length_ += GetDistance(Bus->stops[i], Bus->stops[i + 1]);
                 }
-                curv = meters_length / geo_length;
+                bus_info.curvature_ = bus_info.meters_route_length_ / bus_info.geo_route_length_;
             }
-            return { std::string_view(route), stops_num, uniq, geo_length, meters_length, curv };
+            return bus_info;
         }
         else {
-            return { std::string_view(route), 0, 0, 0.0, 0, 0.0 };
+            return bus_info;
         }
     }
 
-    void TransportCatalogue::SetDistance(const Stop* stop_from, const Stop* stop_to, size_t dist)
+    void TransportCatalogue::SetDistance(const domain::Stop* stop_from, const domain::Stop* stop_to, size_t dist)
     {
         if (stop_from != nullptr && stop_to != nullptr)
         {
@@ -68,13 +68,13 @@ namespace transport_catalogue
         }
     }
 
-    size_t TransportCatalogue::GetDistance(const Stop* stop_from, const Stop* stop_to)
+    size_t TransportCatalogue::GetDistance(const domain::Stop* stop_from, const domain::Stop* stop_to)
     {
         size_t result = GetDistanceDirectly(stop_from, stop_to);
         return (result > 0 ? result : GetDistanceDirectly(stop_to, stop_from));
     }
 
-    size_t TransportCatalogue::GetDistanceDirectly(const Stop* stop_from, const Stop* stop_to)
+    size_t TransportCatalogue::GetDistanceDirectly(const domain::Stop* stop_from, const domain::Stop* stop_to)
     {
         if (distances_.count({ stop_from, stop_to }) > 0)
         {
@@ -86,27 +86,27 @@ namespace transport_catalogue
         }
     }
 
-    std::string_view TransportCatalogue::GetStopName(const Stop* stop_ptr)
+    std::string_view TransportCatalogue::GetStopName(const domain::Stop* stop_ptr)
     {
         return std::string_view(stop_ptr->name);
     }
 
-    std::string_view TransportCatalogue::GetStopName(const Stop stop)
+    std::string_view TransportCatalogue::GetStopName(const domain::Stop stop)
     {
         return std::string_view(stop.name);
     }
 
-    std::string_view TransportCatalogue::GetBusName(const Bus* route_ptr)
+    std::string_view TransportCatalogue::GetBusName(const domain::Bus* route_ptr)
     {
         return std::string_view(route_ptr->bus_number);
     }
 
-    std::string_view TransportCatalogue::GetBusName(const Bus route)
+    std::string_view TransportCatalogue::GetBusName(const domain::Bus route)
     {
         return std::string_view(route.bus_number);
     }
 
-    const Stop* TransportCatalogue::GetStopByName(std::string_view stop_name)
+    const domain::Stop* TransportCatalogue::GetStopByName(std::string_view stop_name)
     {
         if (all_stops_map_.count(stop_name) == 0)
         {
@@ -118,7 +118,15 @@ namespace transport_catalogue
         }
     }
 
-    Bus* TransportCatalogue::GetRouteByName(std::string_view bus_name)
+    std::deque<domain::Bus> TransportCatalogue::GetAllBuses() {
+        return all_buses_;
+    }
+
+    std::deque<domain::Stop> TransportCatalogue::GetAllStops() {
+        return all_stops_;
+    }
+
+    domain::Bus* TransportCatalogue::GetRouteByName(std::string_view bus_name)
     {
         if (all_buses_map_.count(bus_name) == 0)
         {
@@ -139,7 +147,6 @@ namespace transport_catalogue
         {
             if (stop_to_bus_map_.count(result)) {
                 auto set_buses = stop_to_bus_map_.at(result);
-
                 for (const auto& bus : set_buses)
                 {
                     stop_info.name_ = stop_name;
