@@ -26,13 +26,16 @@ namespace json {
     public:
 
         Node() = default;
-        Node(Array array) :value_(std::move(array)) {}
-        Node(Dict map) :value_(std::move(map)) {}
-        Node(std::string value) :value_(std::move(value)) {}
-        Node(int value) :value_(std::move(value)) {}
-        Node(double  value) :value_(std::move(value)) {}
-        Node(bool  value) :value_(std::move(value)) {}
-        Node(std::nullptr_t value) :value_(std::move(value)) {}
+
+        template<typename T>
+        Node(T val) : value_(val) {}
+
+        template<typename T>
+        Node& operator=(T val)
+        {
+            value_ = val;
+            return *this;
+        }
 
         const Value& GetValue() const { return value_; }
 
