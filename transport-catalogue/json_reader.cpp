@@ -13,14 +13,14 @@ namespace json_pro
 {
     void LoadJSON(transport_db::TransportCatalogue& t_c, std::istream& input) {
         json::Document doc = json::Load(input);
-        FillCatalog(t_c, doc);
+        FillCatalogBusAndStop(t_c, doc);
         auto& js = doc.GetRoot().AsMap().at("render_settings").AsMap();
         renderer::MapRenderer ren(js, t_c);
         auto str = ren.DocumentMapToPrint();
         PrintAnswer(t_c, doc, str);
     }
 
-    void FillCatalog(transport_db::TransportCatalogue& t_c, json::Document& doc) {
+    void FillCatalogBusAndStop(transport_db::TransportCatalogue& t_c, json::Document& doc) {
         if (doc.GetRoot().AsMap().count("base_requests")) {
             for (const auto& node_map : doc.GetRoot().AsMap().at("base_requests").AsArray()) {
                 if (node_map.AsMap().at("type").AsString() == "Stop") {
@@ -36,6 +36,11 @@ namespace json_pro
                     t_c.AddRoute(bs);
                 }
             }
+        }
+        FillCatalogBusInfoandStopInfo(t_c, doc);
+    }
+
+    void FillCatalogBusInfoandStopInfo(transport_db::TransportCatalogue& t_c, json::Document& doc) {
             for (const auto& node_map : doc.GetRoot().AsMap().at("base_requests").AsArray()) {
                 if (node_map.AsMap().at("type").AsString() == "Stop") {
                     for (const auto& [key, val] : node_map.AsMap().at("road_distances").AsMap()) {
@@ -58,7 +63,6 @@ namespace json_pro
                     }
                 }
         }
-        }
 
     void PrintAnswer(transport_db::TransportCatalogue& t_c, json::Document& doc, std::string result_map_render) {
         using namespace std::literals;
@@ -67,51 +71,67 @@ namespace json_pro
             for (const auto& node_map : doc.GetRoot().AsMap().at("stat_requests").AsArray()) {
                 int id_q = node_map.AsMap().at("id").AsInt();
                 if (node_map.AsMap().at("type").AsString()[0] == 'B') {
+                    arr.emplace_back(PrintBus(t_c, node_map, id_q));
+                }
+                if (node_map.AsMap().at("type").AsString()[0] == 'S') {
+                    arr.emplace_back(PrintStop(t_c, node_map, id_q));
+
+                }
+                if (node_map.AsMap().at("type").AsString()[0] == 'M') {
+                    arr.emplace_back(PrintVisual(result_map_render, id_q));
+                }
+                
+            }
+        }
+        json::Print(json::Document(arr), std::cout);
+    }
+
+    json::Dict PrintVisual(std::string result_map_render, int id) {
+        return json::Dict{
+                            {"map", json::Node(result_map_render)},
+                            {"request_id", id},
+            };
+    }
+
+    json::Dict PrintBus(transport_db::TransportCatalogue& t_c, const json::Node& node_map, int id) {
+        using namespace std::literals;
                     std::string tmp = node_map.AsMap().at("name").AsString();
                     if (t_c.GetRouteByName(tmp) != nullptr) {
-                        arr.emplace_back(json::Dict{
+                        return json::Dict{
                             {"curvature", json::Node(t_c.GetBusInfo(tmp).curvature_)},
-                            {"request_id", id_q},
+                            {"request_id", id},
                             {"route_length", json::Node(t_c.GetBusInfo(tmp).meters_route_length_)},
                             {"stop_count", json::Node(t_c.GetBusInfo(tmp).stops_count_)},
                             {"unique_stop_count", json::Node(t_c.GetBusInfo(tmp).unique_stops_)},
-                            });
+                            };
                     }
                     else {
-                        arr.emplace_back(
-                            json::Dict{
-                            {"request_id", id_q},
-                            {"error_message", "not found"s}, });
+                        return json::Dict{
+                            {"request_id", id},
+                            {"error_message", "not found"s}, };
                     }
                 }
-                else if (node_map.AsMap().at("type").AsString()[0] == 'S') {
+
+    json::Dict PrintStop(transport_db::TransportCatalogue& t_c, const json::Node& node_map, int id) {
+        using namespace std::literals;
                     std::string tmp = node_map.AsMap().at("name").AsString();
                     if (t_c.GetStopByName(tmp) != nullptr) {
                         json::Array arr_bus;
                         for (const auto& elem : t_c.GetStopInfo(tmp).bus_number_) {
                             arr_bus.emplace_back(elem);
                         }
-                        arr.emplace_back(json::Dict{
+                        return json::Dict{
                             {"buses", arr_bus},
-                            {"request_id", id_q},
-                            });
+                            {"request_id", id},
+                            };
                     }
                     else {
-                        arr.emplace_back(
-                            json::Dict{
-                            {"request_id", id_q},
-                            {"error_message", "not found"s}, });
+                        return json::Dict{
+                            {"request_id", id},
+                            {"error_message", "not found"s}, };
 
                     }
                 }
-                else if (node_map.AsMap().at("type").AsString()[0] == 'M') {
-                    arr.emplace_back(json::Dict{
-                            {"map", json::Node(result_map_render)},
-                            {"request_id", id_q},
-                        });
-                } 
+
             }
-        } 
-        json::Print(json::Document(arr), std::cout);
-    }
-}
+
