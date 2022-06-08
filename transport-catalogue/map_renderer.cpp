@@ -15,12 +15,9 @@ namespace sphere
 
 }//namespace sphere
 
-
-
 namespace renderer
 {
-	MapRenderer::MapRenderer(const json::Dict& render_settings,  transport_db::TransportCatalogue& t_c)
-	{
+	RenderSettings::RenderSettings(const json::Dict& render_settings) {
 		width = render_settings.at("width").AsDouble();
 		height = render_settings.at("height").AsDouble();
 		padding = render_settings.at("padding").AsDouble();
@@ -34,15 +31,22 @@ namespace renderer
 		stop_label_offset.lng = render_settings.at("stop_label_offset").AsArray().back().AsDouble();
 		underlayer_width = render_settings.at("underlayer_width").AsDouble();
 		underlayer_color = AddColor(render_settings.at("underlayer_color"));
-		json::Array palette = render_settings.at("color_palette").AsArray();
-		for (auto it = palette.begin(); it != palette.end(); ++it)
+		for (const auto& color : render_settings.at("color_palette").AsArray())
 		{
-			color_palette.push_back(AddColor(*it));
+			color_palette.push_back(AddColor(color));
 		}
-		AddBusSVG(t_c);
 	}
 
-	svg::Color MapRenderer::AddColor(const json::Node& node)
+	MapRenderer::MapRenderer(const RenderSettings& settings, transport_db::TransportCatalogue& t_c)
+		: render_settings_(settings)
+	{
+		AddBusSVG(t_c);
+	}
+	svg::Color MapRenderer::ColorSetting(uint32_t index) {
+		return svg::Color{ render_settings_.color_palette[index % render_settings_.color_palette.size()] };
+	}
+
+	svg::Color RenderSettings::AddColor(const json::Node& node)
 	{
 		{
 			svg::Color color;
@@ -81,7 +85,7 @@ namespace renderer
 		route_bus.SetFillColor("none");
 		route_bus.SetStrokeLineCap(svg::StrokeLineCap::ROUND);
 		route_bus.SetStrokeLineJoin(svg::StrokeLineJoin::ROUND);
-		route_bus.SetStrokeWidth(line_width);
+		route_bus.SetStrokeWidth(render_settings_.line_width);
 		for (auto stop : bus.stops)
 		{
 			svg::Point point = s_({ stop->coords.lat, stop->coords.lng });
@@ -92,8 +96,8 @@ namespace renderer
 	svg::Text MapRenderer::TextSvgForBus(const svg::Point& pos, const std::string& data)
 	{
 		return svg::Text().SetPosition(pos)
-			.SetOffset({ bus_label_offset.lat, bus_label_offset.lng })
-			.SetFontSize(bus_label_font_size)
+			.SetOffset({ render_settings_.bus_label_offset.lat, render_settings_.bus_label_offset.lng })
+			.SetFontSize(render_settings_.bus_label_font_size)
 			.SetFontFamily("Verdana")
 			.SetFontWeight("bold")
 			.SetData(data);
@@ -107,9 +111,9 @@ namespace renderer
 	svg::Text MapRenderer::CreateSVGTextForBus(const svg::Point& pos, const std::string& data)
 	{
 		return TextSvgForBus(pos, data)
-			.SetFillColor(underlayer_color)
-			.SetStrokeColor(underlayer_color)
-			.SetStrokeWidth(underlayer_width)
+			.SetFillColor(render_settings_.underlayer_color)
+			.SetStrokeColor(render_settings_.underlayer_color)
+			.SetStrokeWidth(render_settings_.underlayer_width)
 			.SetStrokeLineCap(svg::StrokeLineCap::ROUND)
 			.SetStrokeLineJoin(svg::StrokeLineJoin::ROUND);
 	}
@@ -132,8 +136,8 @@ namespace renderer
 	svg::Text MapRenderer::TextSvgForStop(const svg::Point& pos, const std::string& data)
 	{
 		return svg::Text().SetPosition(pos)
-			.SetOffset({ stop_label_offset.lat, stop_label_offset.lng })
-			.SetFontSize(stop_label_font_size)
+			.SetOffset({ render_settings_.stop_label_offset.lat, render_settings_.stop_label_offset.lng })
+			.SetFontSize(render_settings_.stop_label_font_size)
 			.SetFontFamily("Verdana")
 			.SetData(data);
 	}
@@ -146,9 +150,9 @@ namespace renderer
 	svg::Text MapRenderer::CreateSVGTextForStop(const svg::Point& pos, const std::string& data)
 	{
 		return TextSvgForStop(pos, data)
-			.SetFillColor(underlayer_color)
-			.SetStrokeColor(underlayer_color)
-			.SetStrokeWidth(underlayer_width)
+			.SetFillColor(render_settings_.underlayer_color)
+			.SetStrokeColor(render_settings_.underlayer_color)
+			.SetStrokeWidth(render_settings_.underlayer_width)
 			.SetStrokeLineCap(svg::StrokeLineCap::ROUND)
 			.SetStrokeLineJoin(svg::StrokeLineJoin::ROUND);
 	}
@@ -172,7 +176,7 @@ namespace renderer
 		{
 			svg::Circle circle;
 			circle.SetCenter(s_({ bus.stops[i]->coords.lat, bus.stops[i]->coords.lng }));
-			circle.SetRadius(stop_radius);
+			circle.SetRadius(render_settings_.stop_radius);
 			circle.SetFillColor("white");
 			result.push_back({ bus.stops[i]->name ,circle });
 		}
@@ -191,17 +195,13 @@ namespace renderer
 			{
 				return lhs.bus_number < rhs.bus_number;
 			});
-		int j = 0;
+		uint32_t index = 0;
 		for (size_t i = 0; i < buses.size(); ++i)
 		{
 			if (buses[i].stops.size())
 			{
-				PushBusSVG(buses[i], color_palette[j]);
-				if (j == static_cast<int>(color_palette.size()) - 1)
-				{
-					j = -1;
-				}
-				++j;
+				PushBusSVG(buses[i], ColorSetting(index));
+				++index;
 			}
 		}
 	}
@@ -223,7 +223,7 @@ namespace renderer
 					min_max.push_back(stop->coords);
 				}
 			}
-			s_ = sphere::SphereProjector(min_max.begin(), min_max.end(), width, height, padding);
+			s_ = sphere::SphereProjector(min_max.begin(), min_max.end(), render_settings_.width, render_settings_.height, render_settings_.padding);
 		}
 	}
 
