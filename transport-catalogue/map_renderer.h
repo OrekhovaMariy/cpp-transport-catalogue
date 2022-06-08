@@ -111,12 +111,36 @@ namespace renderer
 		std::vector<ShapeTextNameStop> shape_name_stops;
 	};
 
-	class MapRenderer
-	{
+	class RenderSettings {
 	public:
-		explicit MapRenderer(const json::Dict& render_settings, transport_db::TransportCatalogue& tc);
+		explicit RenderSettings(const json::Dict& render_settings);
+
+		double width = 0.;
+		double height = 0.;
+		double padding = 0.;
+		double line_width = 0.;
+		double stop_radius = 0.;
+
+		double bus_label_font_size = 0.;
+		geo::Coordinates bus_label_offset = { 0.0, 0.0 };
+
+		double stop_label_font_size = 0.;
+		geo::Coordinates stop_label_offset = { 0.0, 0.0 };
+
+		svg::Color underlayer_color{};
+		double underlayer_width = 0.;
+
+		std::vector<svg::Color> color_palette{};
 
 		inline svg::Color AddColor(const json::Node& node);
+	};
+
+	class MapRenderer 
+	{
+	public:
+		explicit MapRenderer(const RenderSettings& settings, transport_db::TransportCatalogue& t_c);
+
+		svg::Color ColorSetting(uint32_t index);
 
 		inline svg::Polyline AddRoute(const domain::Bus& bus, const svg::Color& color);
 
@@ -150,22 +174,7 @@ namespace renderer
 
 	private:
 
-		double width = 0.;
-		double height = 0.;
-		double padding = 0.;
-		double line_width = 0.;
-		double stop_radius = 0.;
-
-		double bus_label_font_size = 0.;
-		geo::Coordinates bus_label_offset{};
-
-		double stop_label_font_size = 0.;
-		geo::Coordinates stop_label_offset{};
-
-		svg::Color underlayer_color{};
-		double underlayer_width = 0.;
-
-		std::vector<svg::Color> color_palette{};
+		const RenderSettings& render_settings_;
 
 		sphere::SphereProjector s_;
 		std::vector<BusSVG > shape_bus_route;	
