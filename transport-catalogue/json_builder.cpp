@@ -34,12 +34,7 @@ DictItemContext Builder::StartDict() {
     if (nodes_stack_.empty() || (!nodes_stack_.back()->IsNull() && !nodes_stack_.back()->IsArray())) {
         throw std::logic_error("StartDict error");
     }
-    if (nodes_stack_.back()->IsArray()) {
-        InputResult(Dict());
-    }
-    else {
-        *nodes_stack_.back() = Dict();
-    }
+    InputResult(Dict());
     return *this;
 }
 
@@ -47,12 +42,7 @@ ArrayItemContext Builder::StartArray() {
     if (nodes_stack_.empty() || (!nodes_stack_.back()->IsNull() && !nodes_stack_.back()->IsArray())) {
         throw std::logic_error("StartArray error");
     }
-    if (nodes_stack_.back()->IsArray()) {
-        InputResult(Array());
-    }
-    else {
-        *nodes_stack_.back() = Array();
-    }
+    InputResult(Array());
     return *this;
 }
 
