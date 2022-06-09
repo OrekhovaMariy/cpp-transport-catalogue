@@ -35,9 +35,7 @@ DictItemContext Builder::StartDict() {
         throw std::logic_error("StartDict error");
     }
     if (nodes_stack_.back()->IsArray()) {
-        const_cast<Array&>(nodes_stack_.back()->AsArray()).push_back(Dict());
-        Node* node = &const_cast<Array&>(nodes_stack_.back()->AsArray()).back();
-        nodes_stack_.emplace_back(node);
+        InputResult(Dict());
     }
     else {
         *nodes_stack_.back() = Dict();
@@ -50,8 +48,7 @@ ArrayItemContext Builder::StartArray() {
         throw std::logic_error("StartArray error");
     }
     if (nodes_stack_.back()->IsArray()) {
-        const_cast<Array&>(nodes_stack_.back()->AsArray()).push_back(Array());
-        nodes_stack_.emplace_back(&const_cast<Array&>(nodes_stack_.back()->AsArray()).back());
+        InputResult(Array());
     }
     else {
         *nodes_stack_.back() = Array();
@@ -107,14 +104,6 @@ Builder& ItemContext::EndArray() {
     return builder_.EndArray();
 }
 
-KeyValueContext KeyItemContext::Value(Node value) {
-    return ItemContext::Value(std::move(value));
-}
-
-ArrayValueContext ArrayItemContext::Value(Node value) {
-    return ItemContext::Value(std::move(value));
-}
-
-ArrayValueContext ArrayValueContext::Value(Node value) {
+ValueContext KeyItemContext::Value(Node value) {
     return ItemContext::Value(std::move(value));
 }
