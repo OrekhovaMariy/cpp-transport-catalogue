@@ -24,8 +24,13 @@ namespace json {
 
         template <typename T>
         void InputResult(T elem) {
-            const_cast<Array&>(nodes_stack_.back()->AsArray()).push_back(elem);
-            nodes_stack_.emplace_back(&const_cast<Array&>(nodes_stack_.back()->AsArray()).back());
+            if (nodes_stack_.back()->IsArray()) {
+                const_cast<Array&>(nodes_stack_.back()->AsArray()).push_back(elem);
+                nodes_stack_.emplace_back(&const_cast<Array&>(nodes_stack_.back()->AsArray()).back());
+            }
+            else {
+                *nodes_stack_.back() = elem;
+            }
         }
     };
 
