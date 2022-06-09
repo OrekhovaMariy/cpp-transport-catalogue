@@ -3,10 +3,9 @@
 namespace json {
     class ItemContext;
     class KeyItemContext;
-    class KeyValueContext;
+    class ValueContext;
     class DictItemContext;
     class ArrayItemContext;
-    class ArrayValueContext;
 
     class Builder {
     public:
@@ -22,6 +21,12 @@ namespace json {
     private:
         Node root_;
         std::vector<Node*> nodes_stack_;
+
+        template <typename T>
+        void InputResult(T elem) {
+            const_cast<Array&>(nodes_stack_.back()->AsArray()).push_back(elem);
+            nodes_stack_.emplace_back(&const_cast<Array&>(nodes_stack_.back()->AsArray()).back());
+        }
     };
 
     class ItemContext {
@@ -41,14 +46,14 @@ namespace json {
     public:
         KeyItemContext(Builder& builder) :ItemContext(builder) {};
         KeyItemContext Key(std::string key) = delete;
-        KeyValueContext Value(Node value);
+        ValueContext Value(Node value);
         Builder& EndDict() = delete;
         Builder& EndArray() = delete;
     };
 
-    class KeyValueContext :public ItemContext {
+    class ValueContext :public ItemContext {
     public:
-        KeyValueContext(Builder& builder) :ItemContext(builder) {};
+        ValueContext(Builder& builder) :ItemContext(builder) {};
         Builder& Value(Node value) = delete;
         DictItemContext StartDict() = delete;
         ArrayItemContext StartArray() = delete;
@@ -68,15 +73,7 @@ namespace json {
     public:
         ArrayItemContext(Builder& builder) :ItemContext(builder) {};
         KeyItemContext Key(std::string key) = delete;
-        ArrayValueContext Value(Node value);
-        Builder& EndDict() = delete;
-    };
-
-    class ArrayValueContext :public ItemContext {
-    public:
-        ArrayValueContext(Builder& builder) :ItemContext(builder) {};
-        KeyItemContext Key(std::string key) = delete;
-        ArrayValueContext Value(Node value);
+        ArrayItemContext Value(Node value) { return ItemContext::Value(std::move(value)); }
         Builder& EndDict() = delete;
     };
 
