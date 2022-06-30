@@ -6,3 +6,4 @@ int main() {
     transport_db::TransportCatalogue catalog;
     json_pro::LoadJSON(catalog, std::cin);
 }
+
