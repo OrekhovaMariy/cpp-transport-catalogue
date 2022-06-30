@@ -22,15 +22,23 @@ namespace domain {
     struct Stop
     {
     public:
+        size_t edge_id;
+        geo::Coordinates coords;
         std::string name;
-        geo::Coordinates coords{ 0.0, 0.0 };
+
+        explicit Stop(size_t id, geo::Coordinates coordinates, std::string name) 
+            : edge_id(id)
+            , coords(coordinates)
+            , name(name) {
+        }
     };
 
     struct Bus
     {
         std::string bus_number;
-        std::vector<const Stop*> stops = {};
+        std::vector<Stop*> stops = {};
         bool is_roundtrip = false;
+
     };
-    
+
 } // namespace domain
