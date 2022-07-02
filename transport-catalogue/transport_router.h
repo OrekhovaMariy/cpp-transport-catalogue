@@ -1,7 +1,7 @@
 #pragma once
 
 #include "router.h"
-
+#include "transport_catalogue.h"
 
 namespace transport_router {
 
@@ -18,10 +18,12 @@ namespace transport_router {
         }
 
         void SetWaitTime(int wait_time);
-
         void SetVelocity(double velocity);
 
         int GetWaitTime() const;
+        double GetVelocity() const;
+
+        void FillCatalogGraph(transport_db::TransportCatalogue& t_c, graph::DirectedWeightedGraph<double>& graph);
 
     private:
         int wait_time_ = 0;
@@ -29,3 +31,4 @@ namespace transport_router {
         graph::Router<double>* router_ = nullptr;
     };
 }
+
