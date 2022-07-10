@@ -14,8 +14,8 @@ namespace json_pro
 {
     void LoadJSON(transport_db::TransportCatalogue& t_c, std::istream& input) {
         json::Document doc = json::Load(input);
-        FillCatalogStop(t_c, doc);
-        FillCatalogBus(t_c, doc);
+        FillCatalogueStop(t_c, doc);
+        FillCatalogueBus(t_c, doc);
         auto& route_set = doc.GetRoot().AsDict().at("routing_settings").AsDict();
         auto& render_set = doc.GetRoot().AsDict().at("render_settings").AsDict();
         renderer::RenderSettings renset(render_set);
@@ -24,12 +24,12 @@ namespace json_pro
         graph::DirectedWeightedGraph<double> transport_graph(t_c.GetAllStops().size());
         transport_router::TransportRouter router;
         SetGraphInfo(route_set, router);
-        router.FillCatalogGraph(t_c, transport_graph);
+        router.FillCatalogueGraph(t_c, transport_graph);
         graph::Router transport_router(transport_graph);
         PrintAnswer(t_c, doc, str, transport_router, router);
     }
 
-    void FillCatalogStop(transport_db::TransportCatalogue& t_c, json::Document& doc) {
+    void FillCatalogueStop(transport_db::TransportCatalogue& t_c, json::Document& doc) {
         for (const auto& node_map : doc.GetRoot().AsDict().at("base_requests").AsArray()) {
             if (node_map.AsDict().at("type").AsString() == "Stop") {
                 t_c.AddStop(geo::Coordinates{ node_map.AsDict().at("latitude").AsDouble(),  node_map.AsDict().at("longitude").AsDouble() }, node_map.AsDict().at("name").AsString());;
@@ -45,7 +45,7 @@ namespace json_pro
         }
     }
 
-    void FillCatalogBus(transport_db::TransportCatalogue& t_c, json::Document& doc) {
+    void FillCatalogueBus(transport_db::TransportCatalogue& t_c, json::Document& doc) {
         for (const auto& node_map : doc.GetRoot().AsDict().at("base_requests").AsArray()) {
             const auto& map = node_map.AsDict();
             if (map.at("type").AsString() == "Bus") {
@@ -81,51 +81,6 @@ namespace json_pro
                 router.SetWaitTime(bus_wait_time);
             }
         }
-        //for (const auto& bus : t_c.GetAllBuses()) {
-        //    const auto& stops = bus.stops;
-        //    size_t span = 0;
-        //    double weight = bus_wait_time * 1.0;
-        //    auto map = t_c.GetStopsFromTo();
-        //    if (stops.size() > 1) {
-        //        for (size_t i = 0; i < stops.size() - 1; ++i) {
-        //            span = 1;
-        //            weight = bus_wait_time * 1.0;
-        //            for (size_t j = i + 1; j < stops.size(); ++j) {
-        //                if (stops[i] != stops[j]) {
-        //                    auto it = map.find({ stops[j - 1], stops[j] });
-        //                    if (it == map.end()) {
-        //                        it = map.find({ stops[j], stops[j - 1] });
-        //                    }
-        //                    auto k = it->second / velocity;
-        //                    weight += k * (60.0 / 1000.0);
-        //                    graph::Edge edge(stops[i]->edge_id, stops[j]->edge_id, span, bus.bus_number, weight);
-        //                    graph.AddEdge(edge);
-        //                    ++span;
-        //                }
-        //            }
-        //        }
-        //        if (!bus.is_roundtrip) {
-        //            for (size_t i = stops.size() - 1u; i > 0; --i) {
-        //                weight = bus_wait_time * 1.0;
-        //                span = 1;
-        //                
-        //                for (size_t j = i; j > 0; --j) {
-        //                    if (stops[i] != stops[j - 1]) {
-        //                        auto it = map.find({ stops[j], stops[j - 1] });
-        //                        if (it == map.end()) {
-        //                            it = map.find({ stops[j - 1], stops[j] });
-        //                        }
-        //                        auto k = it->second / velocity;
-        //                        weight += k * (60.0 / 1000.0);
-        //                        graph::Edge edge(stops[i]->edge_id, stops[j - 1]->edge_id, span, bus.bus_number, weight);
-        //                        graph.AddEdge(edge);
-        //                        ++span;
-        //                    }
-        //                }
-        //            }
-        //        }
-        //    }
-        //}
     }
 }
 
@@ -311,4 +266,3 @@ json::Dict json_pro::PrintStop(transport_db::TransportCatalogue& t_c, const json
     }
 }
             
-
