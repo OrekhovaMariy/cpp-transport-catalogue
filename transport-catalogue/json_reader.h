@@ -11,8 +11,8 @@
 namespace json_pro {
 	void LoadJSON(transport_db::TransportCatalogue& transport_catalogue, std::istream& input);
 
-	void FillCatalogStop(transport_db::TransportCatalogue& transport_catalogue, json::Document& doc);
-	void FillCatalogBus(transport_db::TransportCatalogue& transport_catalogue, json::Document& doc);
+	void FillCatalogueStop(transport_db::TransportCatalogue& transport_catalogue, json::Document& doc);
+	void FillCatalogueBus(transport_db::TransportCatalogue& transport_catalogue, json::Document& doc);
 	void SetGraphInfo(const json::Dict& doc, transport_router::TransportRouter& router);
 
 	void PrintAnswer(transport_db::TransportCatalogue& transport_catalogue, json::Document& doc, std::string result_map_render, graph::Router<double> transport_router, transport_router::TransportRouter router);
