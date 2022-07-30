@@ -2,6 +2,7 @@
 #include "domain.h"
 #include "map_renderer.h"
 #include "graph.h"
+#include "serialization.h"
 
 #include <sstream>
 #include <optional>
@@ -12,41 +13,84 @@
 
 namespace json_pro
 {
-    void LoadJSON(transport_db::TransportCatalogue& t_c, std::istream& input) {
-        json::Document doc = json::Load(input);
-        FillCatalogueStop(t_c, doc);
-        FillCatalogueBus(t_c, doc);
-        auto& route_set = doc.GetRoot().AsDict().at("routing_settings").AsDict();
-        auto& render_set = doc.GetRoot().AsDict().at("render_settings").AsDict();
-        renderer::RenderSettings renset(render_set);
-        renderer::MapRenderer ren(renset, t_c);
-        auto str = ren.DocumentMapToPrint();
-        graph::DirectedWeightedGraph<double> transport_graph(t_c.GetAllStops().size());
-        transport_router::TransportRouter router;
-        SetGraphInfo(route_set, router);
-        router.FillCatalogueGraph(t_c, transport_graph);
-        graph::Router transport_router(transport_graph);
-        PrintAnswer(t_c, doc, str, transport_router, router);
-    }
+    JSONreader::JSONreader(serialize::Serialization& serializator,
+        transport_db::TransportCatalogue& t_c,
+        std::string result_map_render,
+        transport_router::TransportRouter& transport_router)
+        : serializator_(serializator)
+        , t_c_(t_c)
+        , result_map_render_(result_map_render)
+        , transport_router_(transport_router) {}
 
-    void FillCatalogueStop(transport_db::TransportCatalogue& t_c, json::Document& doc) {
-        for (const auto& node_map : doc.GetRoot().AsDict().at("base_requests").AsArray()) {
-            if (node_map.AsDict().at("type").AsString() == "Stop") {
-                t_c.AddStop(geo::Coordinates{ node_map.AsDict().at("latitude").AsDouble(),  node_map.AsDict().at("longitude").AsDouble() }, node_map.AsDict().at("name").AsString());;
+    void JSONreader::LoadJSON( std::istream& input) {
+        json::Document doc = json::Load(input);
+        const auto load = doc.GetRoot().AsDict(); 
+        base_requests_ = load.at("base_requests").AsArray();
+        if (load.find("routing_settings") != load.end()) {
+            route_requests_ = load.at("routing_settings").AsDict();
+        }
+                
+        FillCatalogueStop( doc);
+        FillCatalogueBus( doc);
+                serializator_.SetSetting(DoSerialization(load.at("serialization_settings").AsDict()));
+        if (load.find("render_settings") != load.end()) {
+            render_requests_ = load.at("render_settings").AsDict();
+            renderer::RenderSettings renset(render_requests_);
+            renderer::MapRenderer ren(renset, t_c_);
+            result_map_render_ = ren.DocumentMapToPrint();
+        }
+        serializator_.SetMapRender(result_map_render_);
+
+        for (const auto& [key, value] : route_requests_) {
+            if (key == "bus_velocity") {
+                std::map<std::string, double> map_velosity{ {"bus_velocity", value.AsDouble()} };
+                serializator_.OutputRouterSetVelosity(map_velosity);
+            }
+            else if (key == "bus_wait_time") {
+                std::map<std::string, int> map_time{ {"bus_wait_time", value.AsInt()} };
+                serializator_.OutputRouterSetTime(map_time);
             }
         }
-        for (const auto& node_map : doc.GetRoot().AsDict().at("base_requests").AsArray()) {
+
+        serializator_.Serialize(t_c_);
+    }
+
+    void JSONreader::ReadRequests(std::istream& input) {
+        const auto load = json::Load(input).GetRoot().AsDict();
+        stat_requests_ = load.at("stat_requests").AsArray();
+        serializator_.SetSetting(DoSerialization(load.at("serialization_settings").AsDict()));
+        serializator_.DeserializeCatalogue(t_c_);
+        result_map_render_ = serializator_.InputMapRenderer();
+        int bus_wait_time = serializator_.InputRouterSetTime();
+        double velocity = serializator_.InputRouterSetVelosity();
+        route_requests_.insert({ "bus_wait_time" , bus_wait_time });
+        route_requests_.insert({ "bus_velocity" , velocity });
+        
+    }
+
+    std::filesystem::path JSONreader::DoSerialization(const json::Dict& queryset)
+    {
+        return std::filesystem::path(queryset.at("file").AsString());
+    }
+
+    void JSONreader::FillCatalogueStop( json::Document& doc) {
+        for (const auto& node_map : base_requests_) {
+            if (node_map.AsDict().at("type").AsString() == "Stop") {
+                t_c_.AddStop(geo::Coordinates{ node_map.AsDict().at("latitude").AsDouble(),  node_map.AsDict().at("longitude").AsDouble() }, node_map.AsDict().at("name").AsString());;
+            }
+        }
+        for (const auto& node_map : base_requests_) {
             const auto& map = node_map.AsDict();
             if (map.at("type").AsString() == "Stop") {
                 for (const auto& [key, val] : map.at("road_distances").AsDict()) {
-                    t_c.SetDistance(t_c.GetStopByName(map.at("name").AsString()), t_c.GetStopByName(key), val.AsInt());
+                    t_c_.SetDistance(t_c_.GetStopByName(map.at("name").AsString()), t_c_.GetStopByName(key), val.AsInt());
                 }
             }
         }
     }
 
-    void FillCatalogueBus(transport_db::TransportCatalogue& t_c, json::Document& doc) {
-        for (const auto& node_map : doc.GetRoot().AsDict().at("base_requests").AsArray()) {
+    void JSONreader::FillCatalogueBus( json::Document& doc) {
+        for (const auto& node_map : base_requests_) {
             const auto& map = node_map.AsDict();
             if (map.at("type").AsString() == "Bus") {
                 domain::Bus bs;
@@ -54,20 +98,20 @@ namespace json_pro
                 bs.is_roundtrip = map.at("is_roundtrip").AsBool();
                 int j = map.at("stops").AsArray().size();
                 for (size_t i = 0; i < j; ++i) {
-                    bs.stops.push_back(t_c.GetStopByName(map.at("stops").AsArray()[i].AsString()));
+                    bs.stops.push_back(t_c_.GetStopByName(map.at("stops").AsArray()[i].AsString()));
                 }
                 if (map.at("is_roundtrip").AsBool() == false && j >= 2) {
                     for (j = j - 2; j >= 0; ) {
-                        bs.stops.push_back(t_c.GetStopByName(map.at("stops").AsArray()[j].AsString()));
+                        bs.stops.push_back(t_c_.GetStopByName(map.at("stops").AsArray()[j].AsString()));
                         --j;
                     }
                 }
-                t_c.AddRoute(bs);
+                t_c_.AddRoute(bs);
             }
         }
     }
 
-    void SetGraphInfo(const json::Dict& route_set, transport_router::TransportRouter& router)
+    void JSONreader::SetGraphInfo(const json::Dict& route_set, transport_router::TransportRouter& router)
     {
         int bus_wait_time = 0;
         double velocity = 0.0;
@@ -84,28 +128,31 @@ namespace json_pro
     }
 }
 
-void json_pro::PrintAnswer(transport_db::TransportCatalogue& t_c, json::Document& doc, 
-    std::string result_map_render, graph::Router<double> transport_router, transport_router::TransportRouter router) 
+void json_pro::JSONreader::PrintAnswer()    
 {
     using namespace std::literals;
+    graph::DirectedWeightedGraph<double> transport_graph(t_c_.GetAllStops().size());
+    SetGraphInfo(route_requests_, transport_router_);
+    transport_router_.FillCatalogueGraph(t_c_, transport_graph);
+    graph::Router transport_router(transport_graph);
     json::Array arr{};
-    if (doc.GetRoot().AsDict().count("stat_requests")) {
-        for (const auto& node_map : doc.GetRoot().AsDict().at("stat_requests").AsArray()) {
+    
+        for (const auto& node_map : stat_requests_) {
             int id_q = node_map.AsDict().at("id").AsInt();
             if (node_map.AsDict().at("type").AsString()[0] == 'B') {
-                arr.emplace_back(json_pro::PrintBus(t_c, node_map, id_q));
+                arr.emplace_back(json_pro::JSONreader::PrintBus( node_map, id_q));
             }
             if (node_map.AsDict().at("type").AsString()[0] == 'S') {
-                arr.emplace_back(json_pro::PrintStop(t_c, node_map, id_q));
+                arr.emplace_back(json_pro::JSONreader::PrintStop( node_map, id_q));
             }
             if (node_map.AsDict().at("type").AsString()[0] == 'M') {
-                arr.emplace_back(json_pro::PrintVisual(result_map_render, id_q));
+                arr.emplace_back(json_pro::JSONreader::PrintVisual(result_map_render_, id_q));
             }
             if (node_map.AsDict().at("type").AsString()[0] == 'R') {
-                arr.emplace_back(json_pro::PrintGraph(t_c, node_map, id_q, transport_router, router));
+                arr.emplace_back(json_pro::JSONreader::PrintGraph( node_map, id_q, transport_router, transport_router_));
             }
         }
-    }
+    
     json::Print(
         json::Document{
         json::Builder{}
@@ -116,17 +163,17 @@ void json_pro::PrintAnswer(transport_db::TransportCatalogue& t_c, json::Document
     );
 }
 
-json::Dict json_pro::PrintGraph(transport_db::TransportCatalogue& t_c, const json::Node& node_map, int id, 
-    graph::Router<double> transport_router, transport_router::TransportRouter router) 
+json::Dict json_pro::JSONreader::PrintGraph( const json::Node& node_map, int id,
+    graph::Router<double> transport_router, transport_router::TransportRouter router)
 {
     using namespace std::literals;
     std::string tmp_from = node_map.AsDict().at("from").AsString();
     std::string tmp_to = node_map.AsDict().at("to").AsString();
-    const domain::Stop* stop_from = t_c.GetStopByName(tmp_from);
-    const domain::Stop* stop_to = t_c.GetStopByName(tmp_to);
+    const domain::Stop* stop_from = t_c_.GetStopByName(tmp_from);
+    const domain::Stop* stop_to = t_c_.GetStopByName(tmp_to);
     if (stop_from == stop_to) {
         return
-        json::Builder{}
+            json::Builder{}
             .StartDict()
             .Key("total_time"s).Value(0)
             .Key("request_id"s).Value(id)
@@ -146,7 +193,7 @@ json::Dict json_pro::PrintGraph(transport_db::TransportCatalogue& t_c, const jso
             int wait_time = router.GetWaitTime();
             for (const auto& el : elem) {
                 const auto& edge = transport_router.GetGraph().GetEdge(el);
-                std::string stop_name{ t_c.GetAllStops()[edge.from].name };
+                std::string stop_name{ t_c_.GetAllStops()[edge.from].name };
                 json::Dict wait = json::Builder{}
                     .StartDict()
                     .Key("time"s).Value(wait_time)
@@ -196,9 +243,9 @@ json::Dict json_pro::PrintGraph(transport_db::TransportCatalogue& t_c, const jso
         .EndDict()
         .Build()
         .AsDict();
-    }
+}
 
-json::Dict json_pro::PrintVisual(std::string result_map_render, int id) {
+json::Dict json_pro::JSONreader::PrintVisual(std::string result_map_render, int id) {
     return
         json::Builder{}
         .StartDict()
@@ -209,18 +256,18 @@ json::Dict json_pro::PrintVisual(std::string result_map_render, int id) {
         .AsDict();
 }
 
-json::Dict json_pro::PrintBus(transport_db::TransportCatalogue& t_c, const json::Node& node_map, int id) {
+json::Dict json_pro::JSONreader::PrintBus( const json::Node& node_map, int id) {
     using namespace std::literals;
     std::string tmp = node_map.AsDict().at("name").AsString();
-    if (t_c.GetRouteByName(tmp) != nullptr) {
+    if (t_c_.GetRouteByName(tmp) != nullptr) {
         return
             json::Builder{}
             .StartDict()
-            .Key("curvature").Value(t_c.GetBusInfo(tmp).curvature_)
+            .Key("curvature").Value(t_c_.GetBusInfo(tmp).curvature_)
             .Key("request_id").Value(id)
-            .Key("route_length").Value(t_c.GetBusInfo(tmp).meters_route_length_)
-            .Key("stop_count").Value(t_c.GetBusInfo(tmp).stops_count_)
-            .Key("unique_stop_count").Value(t_c.GetBusInfo(tmp).unique_stops_)
+            .Key("route_length").Value(t_c_.GetBusInfo(tmp).meters_route_length_)
+            .Key("stop_count").Value(t_c_.GetBusInfo(tmp).stops_count_)
+            .Key("unique_stop_count").Value(t_c_.GetBusInfo(tmp).unique_stops_)
             .EndDict()
             .Build()
             .AsDict();
@@ -237,12 +284,12 @@ json::Dict json_pro::PrintBus(transport_db::TransportCatalogue& t_c, const json:
     }
 }
 
-json::Dict json_pro::PrintStop(transport_db::TransportCatalogue& t_c, const json::Node& node_map, int id) {
+json::Dict json_pro::JSONreader::PrintStop( const json::Node& node_map, int id) {
     using namespace std::literals;
     std::string tmp = node_map.AsDict().at("name").AsString();
-    if (t_c.GetStopByName(tmp) != nullptr) {
+    if (t_c_.GetStopByName(tmp) != nullptr) {
         json::Array arr_bus{};
-        for (const auto& elem : t_c.GetStopInfo(tmp).bus_number_) {
+        for (const auto& elem : t_c_.GetStopInfo(tmp).bus_number_) {
             arr_bus.emplace_back(elem);
         }
         return
@@ -265,4 +312,8 @@ json::Dict json_pro::PrintStop(transport_db::TransportCatalogue& t_c, const json
             .AsDict();
     }
 }
+
+
+
+
             
