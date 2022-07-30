@@ -143,7 +143,7 @@ namespace svg {
             else {
                 out << c;
             }
-        } 
+        }
         out << "</text>"sv;
     }
 
