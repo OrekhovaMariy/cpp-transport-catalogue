@@ -69,7 +69,6 @@ Node Builder::Build() {
     return root_;
 }
 
-
 KeyItemContext ItemContext::Key(std::string key) {
     return builder_.Key(std::move(key));
 }
