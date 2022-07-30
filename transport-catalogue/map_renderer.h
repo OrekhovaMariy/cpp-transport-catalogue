@@ -15,7 +15,7 @@ namespace sphere
 {
 	inline const double EPSILON = 1e-6;
 	bool IsZero(double value);
-	
+
 	class SphereProjector
 	{
 	public:
@@ -77,7 +77,7 @@ namespace sphere
 		double min_lon_ = 0;
 		double max_lat_ = 0;
 		double zoom_coeff_ = 0;
-	};	
+	};
 }//namespace
 
 namespace renderer
@@ -135,9 +135,10 @@ namespace renderer
 		inline svg::Color AddColor(const json::Node& node);
 	};
 
-	class MapRenderer 
+	class MapRenderer
 	{
 	public:
+		explicit MapRenderer() = default;
 		explicit MapRenderer(const RenderSettings& settings, transport_db::TransportCatalogue& t_c);
 
 		svg::Color ColorSetting(uint32_t index);
@@ -177,7 +178,8 @@ namespace renderer
 		const RenderSettings& render_settings_;
 
 		sphere::SphereProjector s_;
-		std::vector<BusSVG > shape_bus_route;	
+		std::vector<BusSVG > shape_bus_route;
 	};
 
 }//namespace
+
