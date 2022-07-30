@@ -78,7 +78,7 @@ namespace renderer
 		}
 	}
 
-	svg::Polyline MapRenderer::AddRoute (const domain::Bus& bus, const svg::Color& color)
+	svg::Polyline MapRenderer::AddRoute(const domain::Bus& bus, const svg::Color& color)
 	{
 		svg::Polyline route_bus;
 		route_bus.SetStrokeColor(color);
@@ -227,7 +227,7 @@ namespace renderer
 		}
 	}
 
-	inline Doc MapRenderer::PrepareDoc (const std::vector<BusSVG>& buses) const
+	inline Doc MapRenderer::PrepareDoc(const std::vector<BusSVG>& buses) const
 	{
 		Doc temp;
 		for (const auto& bus : buses)
