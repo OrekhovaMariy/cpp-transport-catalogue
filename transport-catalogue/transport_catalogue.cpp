@@ -165,4 +165,3 @@ namespace transport_db
         return stop_info;
     }
 }
-
