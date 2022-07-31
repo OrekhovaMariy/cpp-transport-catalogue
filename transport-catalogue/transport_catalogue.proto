@@ -23,15 +23,19 @@ message Bus {
 }
 
 message DistanceFromTo {
-    bytes      from = 1;
-    bytes      to = 2;
-    uint64     distance = 3;
+		bytes      from = 1;
+		bytes      to = 2;
+		uint64     distance = 3;
 }
 
-message TransportCatalogue {
+message TransportCatalogueBase{
 		repeated Stop stops = 1;
 		repeated Bus buses = 2;
 		repeated DistanceFromTo distance_from_to = 3;
-		proto_map_renderer.MapRen map_ren = 4;
-		proto_transport_router.RouterSet router_set = 5;
+}
+
+message TransportCatalogue {
+		TransportCatalogueBase transport_base = 1;
+		proto_map_renderer.MapRen map_ren = 2;
+		proto_transport_router.RouterSet router_set = 3;
 }
