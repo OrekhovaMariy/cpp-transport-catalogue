@@ -23,76 +23,76 @@ namespace serialize {
     void Serialization::Serialize(transport_db::TransportCatalogue& cat)
     {
         std::ofstream out_file(path_, std::ios::binary);
-        OutputStops();
-        OutputDistanceFromTo();
-        OutputBuses();
+        SerializeStops();
+        SerializeDistanceFromTo();
+        SerializeBuses();
         base_.SerializeToOstream(&out_file);
     }
 
     void Serialization::DeserializeCatalogue(transport_db::TransportCatalogue& cat) {
         std::ifstream in_file(path_, std::ios::binary);
         base_.ParseFromIstream(&in_file);
-        InputStops();
-        InputDistanceFromTo();
-        InputBuses();
+        DeserializeStops();
+        DeserializeDistanceFromTo();
+        DeserializeBuses();
     }
 
     proto_catalogue::Stop Serialization::SaveStop(const domain::Stop& stop) const {
-        proto_catalogue::Stop tmp;
-        tmp.set_id(stop.edge_id);
-        tmp.set_stop_name(stop.name);
-        tmp.mutable_coordinates()->set_lat(stop.coords.lat);
-        tmp.mutable_coordinates()->set_lon(stop.coords.lng);
-        return tmp;
+        proto_catalogue::Stop proto_stop;
+        proto_stop.set_id(stop.edge_id);
+        proto_stop.set_stop_name(stop.name);
+        proto_stop.mutable_coordinates()->set_lat(stop.coords.lat);
+        proto_stop.mutable_coordinates()->set_lon(stop.coords.lng);
+        return proto_stop;
     }
     
     proto_catalogue::DistanceFromTo Serialization::SaveDistanceFromTo(domain::Stop* from, domain::Stop* to, size_t distance) const {
-        proto_catalogue::DistanceFromTo tmp;
-        tmp.set_from(from->name);
-        tmp.set_to(to->name);
-        tmp.set_distance(distance);
-        return tmp;
+        proto_catalogue::DistanceFromTo proto_dist;
+        proto_dist.set_from(from->name);
+        proto_dist.set_to(to->name);
+        proto_dist.set_distance(distance);
+        return proto_dist;
     }
 
     proto_catalogue::Bus Serialization::SaveBus(const domain::Bus& bus) const {
-        proto_catalogue::Bus tmp;
-        tmp.set_is_roundtrip(bus.is_roundtrip);
-        tmp.set_bus_name(bus.bus_number);
+        proto_catalogue::Bus proto_bus;
+        proto_bus.set_is_roundtrip(bus.is_roundtrip);
+        proto_bus.set_bus_name(bus.bus_number);
         for (const auto& stop : bus.stops) {
-            tmp.add_names_of_stops(stop->name);
+            proto_bus.add_names_of_stops(stop->name);
         }
-        return tmp;
+        return proto_bus;
     }
 
-    void Serialization::OutputStops() {
+    void Serialization::SerializeStops() {
         for (const auto& stop : transport_catalogue_.GetAllStops()) {
-            *base_.add_stops() = std::move(SaveStop(stop));
+            *base_.mutable_transport_base()->add_stops() = std::move(SaveStop(stop));
         }
     }
 
-    void Serialization::OutputDistanceFromTo() {
+    void Serialization::SerializeDistanceFromTo() {
         for (const auto& [from_to, distance] : transport_catalogue_.GetStopsFromTo()) {
-            *base_.add_distance_from_to() = std::move(SaveDistanceFromTo(from_to.first, from_to.second, distance));
+            *base_.mutable_transport_base()->add_distance_from_to() = std::move(SaveDistanceFromTo(from_to.first, from_to.second, distance));
         }
     }
 
-    void Serialization::OutputBuses() {
+    void Serialization::SerializeBuses() {
         for (const auto& bus : transport_catalogue_.GetAllBuses()) {
-            *base_.add_buses() = std::move(SaveBus(bus));
+            *base_.mutable_transport_base()->add_buses() = std::move(SaveBus(bus));
         }
     }
 
-    void Serialization::OutputRouterSetVelosity(std::map <std::string, double> router_settings_velosity)
+    void Serialization::SerializeRouterSetVelosity(std::map <std::string, double> router_settings_velosity)
     {
         base_.mutable_router_set()->set_bus_velocity(router_settings_velosity.at("bus_velocity"));
     }
 
-    void Serialization::OutputRouterSetTime(std::map <std::string, int> router_settings_time)
+    void Serialization::SerializeRouterSetTime(std::map <std::string, int> router_settings_time)
     {
         base_.mutable_router_set()->set_bus_wait_time(router_settings_time.at("bus_wait_time"));
     }
 
-    void Serialization::SetMapRender(std::string map) {
+    void Serialization::SerializeMapRender(std::string map) {
         base_.mutable_map_ren()->set_str_of_result_map_render(map);
     }
 
@@ -119,33 +119,33 @@ namespace serialize {
         transport_catalogue_.AddRoute(tmp);
     }
 
-    void Serialization::InputStops() {
-        for (int i = 0; i < base_.stops_size(); ++i) {
-            LoadStop(base_.stops(i));
+    void Serialization::DeserializeStops() {
+        for (int i = 0; i < base_.transport_base().stops_size(); ++i) {
+            LoadStop(base_.transport_base().stops(i));
         }
     }
 
-    void Serialization::InputDistanceFromTo() {
-        for (int i = 0; i < base_.distance_from_to_size(); ++i) {
-            LoadDistanceFromTo(base_.distance_from_to(i));
+    void Serialization::DeserializeDistanceFromTo() {
+        for (int i = 0; i < base_.transport_base().distance_from_to_size(); ++i) {
+            LoadDistanceFromTo(base_.transport_base().distance_from_to(i));
         }
     }
 
-    void Serialization::InputBuses() {
-        for (int i = 0; i < base_.buses_size(); ++i) {
-            LoadBus(base_.buses(i));
+    void Serialization::DeserializeBuses() {
+        for (int i = 0; i < base_.transport_base().buses_size(); ++i) {
+            LoadBus(base_.transport_base().buses(i));
         }
     }
 
-    std::string Serialization::InputMapRenderer() {
+    std::string Serialization::DeserializeMapRenderer() {
         return base_.map_ren().str_of_result_map_render();
     }
 
-    double Serialization::InputRouterSetVelosity() {
+    double Serialization::DeserializeRouterSetVelosity() {
         return base_.router_set().bus_velocity();
     }
 
-   int Serialization::InputRouterSetTime() {
+   int Serialization::DeserializeRouterSetTime() {
        return base_.router_set().bus_wait_time();
     }
 }
