@@ -27,25 +27,25 @@ namespace serialize {
 		int DeserializeRouterSetTime();
 
 	private:
-        proto_catalogue::Stop SaveStop(const domain::Stop& stop) const;
+        	proto_catalogue::Stop SaveStop(const domain::Stop& stop) const;
 		proto_catalogue::DistanceFromTo SaveDistanceFromTo(domain::Stop* from, domain::Stop* to, size_t dist) const;
 		proto_catalogue::Bus SaveBus(const domain::Bus& bus) const;
 
-        void SerializeStops();
+        	void SerializeStops();
 
 		void SerializeDistanceFromTo();
 
-        void SerializeBuses();
+        	void SerializeBuses();
 
-        void LoadStop(const proto_catalogue::Stop& stop);
+        	void LoadStop(const proto_catalogue::Stop& stop);
 		void LoadDistanceFromTo(const proto_catalogue::DistanceFromTo& distance_from_to);
-    void LoadBus(const proto_catalogue::Bus& bus);
+    		void LoadBus(const proto_catalogue::Bus& bus);
 
-    void DeserializeStops();
+    		void DeserializeStops();
 
-	void DeserializeDistanceFromTo();
+    		void DeserializeDistanceFromTo();
 
-	void DeserializeBuses();
+		void DeserializeBuses();
 
 		std::filesystem::path path_;
 		transport_db::TransportCatalogue& transport_catalogue_;
